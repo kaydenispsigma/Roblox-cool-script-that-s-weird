@@ -1,64 +1,31 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local HttpService = game:GetService("HttpService")
 
--- Create ScreenGui
-local playerGui = player:WaitForChild("PlayerGui")
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = playerGui
-
--- Create Chat TextBox
-local chatBox = Instance.new("TextBox")
-chatBox.Size = UDim2.new(0, 200, 0, 50)
-chatBox.Position = UDim2.new(0.5, -100, 0, 70)
-chatBox.PlaceholderText = "Type here..."
-chatBox.Parent = screenGui
-
--- Send message function
+-- Send message function to Roblox's default chat system
 local function sendMessage(text)
-    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+    local chatEvents = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents")
+    chatEvents.SayMessageRequest:FireServer(text, "All")
 end
 
--- Handle chatbox input
-chatBox.FocusLost:Connect(function()
-    local chatText = chatBox.Text
-    if chatText and chatText ~= "" then
-        sendMessage(chatText) -- Send message to new chat system
-        chatBox.Text = "" -- Clear text after sending
-    end
-end)
-
--- Loadstring command
-local function executeLoadstring(scriptCode)
-    local success, result = pcall(loadstring(scriptCode))
-    if success then
-        print("Script executed successfully.")
-    else
-        print("Error executing script: " .. result)
-    end
-end
-
--- Death animation logic
+-- Die animation logic (for local player only)
 local animations = {
     "13123760883", "13123772558", "13123778553", "13123786180"
 }
 
-local function die(msg)
-    if msg == "die" then
-        local character = player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.Health = 0
-                if humanoid.Health == 0 then
-                    for _, deathAnimation in ipairs(animations) do
-                        local animation = Instance.new("Animation")
-                        animation.AnimationId = "rbxassetid://" .. deathAnimation
-                        local animator = humanoid:FindFirstChildOfClass("Animator")
-                        if animator then
-                            animator:LoadAnimation(animation):Play()
-                        end
+local function die()
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Health = 0
+            if humanoid.Health == 0 then
+                for _, deathAnimation in ipairs(animations) do
+                    local animation = Instance.new("Animation")
+                    animation.AnimationId = "rbxassetid://" .. deathAnimation
+                    local animator = humanoid:FindFirstChildOfClass("Animator")
+                    if animator then
+                        animator:LoadAnimation(animation):Play()
                     end
                 end
             end
@@ -66,20 +33,14 @@ local function die(msg)
     end
 end
 
--- Listen for chat messages
-player.Chatted:Connect(function(message)
+-- Handle chat commands (kill, die, loadstring)
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(message)
     local args = message:split(" ")
     local command = args[1]:lower()
 
-    -- Handle "die" command
+    -- Handle "die" command (only affects the local player)
     if command == "die" then
-        die("die")
-    end
-
-    -- Handle "loadstring" command
-    if command == "loadstring" and args[2] then
-        local scriptCode = table.concat(args, " ", 2)
-        executeLoadstring(scriptCode)
+        die()  -- Trigger death animation for the local player
     end
 
     -- Handle "kill <user>" command
@@ -103,6 +64,20 @@ player.Chatted:Connect(function(message)
                     end
                 end
             end
+        end
+    end
+
+    -- Handle "loadstring" command (execute loadstring)
+    if command == "loadstring" and args[2] then
+        local code = table.concat(args, " ", 2)  -- Concatenate the rest of the message as the code
+        local success, result = pcall(function()
+            loadstring(code)()  -- Execute the loadstring command
+        end)
+        
+        if success then
+            sendMessage("Script executed successfully!")
+        else
+            sendMessage("Error executing script: " .. result)
         end
     end
 end)
