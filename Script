@@ -54,11 +54,18 @@ game:GetService("Players").LocalPlayer.Chatted:Connect(function(message)
                     local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
                     local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
                     if targetHRP and localHRP then
-                        -- Continuously teleport and spin localplayer
+                        -- Continuously teleport and spin localplayer while applying force
+                        local flingVelocity = Vector3.new(0, 100, 0)  -- Fling force
                         while targetCharacter.Parent do
+                            -- Teleport the local player to the target
                             localHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
+
+                            -- Apply rotational force (spinning)
                             localHRP.CFrame = localHRP.CFrame * CFrame.Angles(0, math.rad(500), 0) -- Extreme spin
-                            localHRP.Velocity = Vector3.new(0, 100, 0) -- Fling force
+
+                            -- Apply upward force to fling the player
+                            localHRP.Velocity = flingVelocity
+
                             wait(0.05)
                         end
                     end
