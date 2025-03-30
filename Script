@@ -40,7 +40,7 @@ local function performFling(targetCharacter)
     local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
     
     if targetHRP and localHRP then
-        local flingVelocity = Vector3.new(0, 100, 0)  -- Fling force
+        local flingVelocity = Vector3.new(0, 999999, 0)  -- Fling force
 
         while targetCharacter.Parent do
             -- Teleport the local player to the target's position
