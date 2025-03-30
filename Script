@@ -3,112 +3,69 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local HttpService = game:GetService("HttpService")
 
--- Store player scripts
-local playerData = {}
+-- Create ScreenGui
+local playerGui = player:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
 
--- Create a simple notification function using built-in system
-local function sendNotification(message)
-    player:SendNotification({
-        Title = "Script Notification",
-        Text = message,
-        Icon = "rbxassetid://13123760883",  -- Optional icon (replace with your own)
-        Duration = 5  -- Notification duration
-    })
-end
+-- Create Chat TextBox
+local chatBox = Instance.new("TextBox")
+chatBox.Size = UDim2.new(0, 200, 0, 50)
+chatBox.Position = UDim2.new(0.5, -100, 0, 70)
+chatBox.PlaceholderText = "Type here..."
+chatBox.Parent = screenGui
 
--- Send message function (sends to everyone in the game)
+-- Send message function
 local function sendMessage(text)
     ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
 end
 
--- Death animation logic
-local animations = {
-    "13123760883", "13123772558", "13123778553", "13123786180"
-}
+-- Handle chatbox input
+chatBox.FocusLost:Connect(function()
+    local chatText = chatBox.Text
+    if chatText and chatText ~= "" then
+        player:Chatted(chatText) -- Simulate player sending chat message
+        chatBox.Text = "" -- Clear text after sending
+    end
+end)
 
-local function die(msg)
-    if msg == "die" then
-        local character = player.Character
-        if character then
-            local humanoid = character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
-                humanoid.Health = 0
-                if humanoid.Health == 0 then
-                    for _, deathAnimation in ipairs(animations) do
-                        local animation = Instance.new("Animation")
-                        animation.AnimationId = "rbxassetid://" .. deathAnimation
-                        local animator = humanoid:FindFirstChildOfClass("Animator")
-                        if animator then
-                            animator:LoadAnimation(animation):Play()
+-- Handle chat commands
+player.Chatted:Connect(function(message)
+    local args = message:split(" ")
+    local command = args[1]:lower()
+
+    -- Handle "loadstring" command
+    if command == "loadstring" and args[2] then
+        local scriptCode = table.concat(args, " ", 2)
+        local success, result = pcall(loadstring(scriptCode))
+        if success then
+            print("Script executed successfully.")
+        else
+            print("Error executing script: " .. result)
+        end
+    end
+
+    -- Handle "kill <user>" command
+    if command == "kill" and args[2] then
+        local targetName = args[2]
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target.Name:lower():sub(1, #targetName) == targetName:lower() then
+                local targetCharacter = target.Character
+                local localCharacter = player.Character
+                if targetCharacter and localCharacter then
+                    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
+                    local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
+                    if targetHRP and localHRP then
+                        -- Continuously teleport and spin localplayer
+                        while targetCharacter.Parent do
+                            localHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
+                            localHRP.CFrame = localHRP.CFrame * CFrame.Angles(0, math.rad(500), 0) -- Extreme spin
+                            localHRP.Velocity = Vector3.new(0, 100, 0) -- Fling force
+                            wait(0.05)
                         end
                     end
                 end
             end
-        end
-    end
-end
-
--- Handle chat messages using Player.Chatted
-player.Chatted:Connect(function(message)
-    -- Check if the message is "die"
-    if message:lower() == "die" then
-        die("die")
-    end
-    
-    -- Handle the "addloadstring" command (saves a script directly)
-    if message:lower():sub(1, 13) == "addloadstring" then
-        local splitMessage = message:split(" ", 3)
-        local scriptName = splitMessage[2]
-        local scriptCode = splitMessage[3]
-
-        if scriptName and scriptCode then
-            -- Save the script code for the player
-            playerData[player.UserId] = playerData[player.UserId] or {}
-            playerData[player.UserId][scriptName] = scriptCode
-            sendNotification("Script '" .. scriptName .. "' saved successfully!")
-        else
-            sendNotification("Usage: addloadstring <script_name> <script_code>")
-        end
-    end
-
-    -- Handle the "loadstring" command (executes a saved script or a script from URL)
-    if message:lower():sub(1, 10) == "loadstring" then
-        local splitMessage = message:split(" ", 2)
-        local input = splitMessage[2]
-
-        if input then
-            -- Check if the input is a URL
-            if input:match("https?://") then
-                -- Execute script from URL
-                local success, result = pcall(function()
-                    local scriptContent = game:HttpGet(input)
-                    loadstring(scriptContent)()
-                end)
-
-                if success then
-                    sendNotification("Script from URL executed successfully.")
-                else
-                    sendNotification("Error executing the script from URL: " .. result)
-                end
-            else
-                -- If it's not a URL, check if it's a saved script
-                if playerData[player.UserId] and playerData[player.UserId][input] then
-                    local scriptCode = playerData[player.UserId][input]
-                    local success, result = pcall(function()
-                        loadstring(scriptCode)()
-                    end)
-
-                    if success then
-                        sendNotification("Script '" .. input .. "' executed successfully.")
-                    else
-                        sendNotification("Error executing the script '" .. input .. "': " .. result)
-                    end
-                else
-                    sendNotification("No script found with the name '" .. input .. "'")
-                end
-            end
-        else
-            sendNotification("Usage: loadstring <script_name_or_url>")
         end
     end
 end)
