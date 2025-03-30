@@ -33,6 +33,30 @@ local function die()
     end
 end
 
+-- Fling the target player continuously (with rotational and upward force)
+local function performFling(targetCharacter)
+    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
+    local localCharacter = player.Character
+    local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
+    
+    if targetHRP and localHRP then
+        local flingVelocity = Vector3.new(0, 100, 0)  -- Fling force
+
+        while targetCharacter.Parent do
+            -- Teleport the local player to the target's position
+            localHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
+
+            -- Apply rotational force (spinning the player)
+            localHRP.CFrame = localHRP.CFrame * CFrame.Angles(0, math.rad(500), 0)  -- Extreme spin
+
+            -- Apply upward force to fling the player
+            localHRP.Velocity = flingVelocity
+
+            wait(0.05)
+        end
+    end
+end
+
 -- Handle chat commands (kill, die, loadstring)
 game:GetService("Players").LocalPlayer.Chatted:Connect(function(message)
     local args = message:split(" ")
@@ -49,26 +73,9 @@ game:GetService("Players").LocalPlayer.Chatted:Connect(function(message)
         for _, target in ipairs(Players:GetPlayers()) do
             if target.Name:lower():sub(1, #targetName) == targetName:lower() then
                 local targetCharacter = target.Character
-                local localCharacter = player.Character
-                if targetCharacter and localCharacter then
-                    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
-                    local localHRP = localCharacter:FindFirstChild("HumanoidRootPart")
-                    if targetHRP and localHRP then
-                        -- Continuously teleport and spin localplayer while applying force
-                        local flingVelocity = Vector3.new(0, 100, 0)  -- Fling force
-                        while targetCharacter.Parent do
-                            -- Teleport the local player to the target
-                            localHRP.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 0)
-
-                            -- Apply rotational force (spinning)
-                            localHRP.CFrame = localHRP.CFrame * CFrame.Angles(0, math.rad(500), 0) -- Extreme spin
-
-                            -- Apply upward force to fling the player
-                            localHRP.Velocity = flingVelocity
-
-                            wait(0.05)
-                        end
-                    end
+                if targetCharacter then
+                    -- Trigger fling mechanics
+                    performFling(targetCharacter)
                 end
             end
         end
