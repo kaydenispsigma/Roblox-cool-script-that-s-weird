@@ -1,0 +1,89 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerData = {}  -- Table to store the player's scripts
+
+-- Send message function
+local function sendMessage(text)
+    ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
+end
+
+-- Death animation logic
+local animations = {
+    "13123760883", "13123772558", "13123778553", "13123786180"
+}
+
+local function die(msg)
+    if msg == "die" then
+        local character = player.Character
+        if character then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid.Health = 0
+                if humanoid.Health == 0 then
+                    for _, deathAnimation in ipairs(animations) do
+                        local animation = Instance.new("Animation")
+                        animation.AnimationId = "rbxassetid://" .. deathAnimation
+                        local animator = humanoid:FindFirstChildOfClass("Animator")
+                        if animator then
+                            animator:LoadAnimation(animation):Play()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Listen for chat messages
+game:GetService("Chat").OnMessageDoneFiltering = function(message, speaker)
+    -- Check if the message is "die"
+    if speaker == player.Name and message:lower() == "die" then
+        die("die")  -- Trigger death animation if "die" is typed
+    end
+    
+    -- Handle the "addloadstring" command
+    if speaker == player.Name and message:lower():sub(1, 13) == "addloadstring" then
+        local splitMessage = message:split(" ", 3)
+        local scriptName = splitMessage[2]
+        local scriptCode = splitMessage[3]
+
+        if scriptName and scriptCode then
+            -- Save the script for the player
+            playerData[player.UserId] = playerData[player.UserId] or {}
+            playerData[player.UserId][scriptName] = scriptCode
+            sendMessage("Script '" .. scriptName .. "' saved successfully!")
+            sendMessage("To execute the script, use: loadstring <script_name>")
+        else
+            sendMessage("Usage: addloadstring <script_name> <script_code>")
+        end
+    end
+
+    -- Handle the "loadstring" command
+    if speaker == player.Name and message:lower():sub(1, 10) == "loadstring" then
+        local splitMessage = message:split(" ", 2)
+        local scriptName = splitMessage[2]
+
+        if scriptName and playerData[player.UserId] and playerData[player.UserId][scriptName] then
+            -- Execute the saved script
+            local scriptCode = playerData[player.UserId][scriptName]
+            local success, result = pcall(function()
+                loadstring(scriptCode)()
+            end)
+
+            if success then
+                sendMessage("Script '" .. scriptName .. "' executed successfully.")
+            else
+                sendMessage("Error executing the script: " .. result)
+            end
+        else
+            sendMessage("No script found with the name: " .. scriptName)
+        end
+    end
+end
+
+-- Notify the player how to use the script system
+sendMessage("Welcome to the custom script system!")
+sendMessage("Commands:")
+sendMessage("1. addloadstring <script_name> <script_code> - Saves a script.")
+sendMessage("2. loadstring <script_name> - Executes a saved script.")
