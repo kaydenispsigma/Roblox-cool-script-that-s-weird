@@ -1,9 +1,22 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local playerData = {}  -- Table to store the player's scripts
+local HttpService = game:GetService("HttpService")
 
--- Send message function
+-- Store player scripts
+local playerData = {}
+
+-- Create a simple notification function using built-in system
+local function sendNotification(message)
+    player:SendNotification({
+        Title = "Script Notification",
+        Text = message,
+        Icon = "rbxassetid://13123760883",  -- Optional icon (replace with your own)
+        Duration = 5  -- Notification duration
+    })
+end
+
+-- Send message function (sends to everyone in the game)
 local function sendMessage(text)
     ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(text, "All")
 end
@@ -35,55 +48,67 @@ local function die(msg)
     end
 end
 
--- Listen for chat messages
+-- Handle chat commands
 game:GetService("Chat").OnMessageDoneFiltering = function(message, speaker)
     -- Check if the message is "die"
     if speaker == player.Name and message:lower() == "die" then
-        die("die")  -- Trigger death animation if "die" is typed
+        die("die")
     end
     
-    -- Handle the "addloadstring" command
+    -- Handle the "addloadstring" command (saves a script directly)
     if speaker == player.Name and message:lower():sub(1, 13) == "addloadstring" then
         local splitMessage = message:split(" ", 3)
         local scriptName = splitMessage[2]
         local scriptCode = splitMessage[3]
 
         if scriptName and scriptCode then
-            -- Save the script for the player
+            -- Save the script code for the player
             playerData[player.UserId] = playerData[player.UserId] or {}
             playerData[player.UserId][scriptName] = scriptCode
-            sendMessage("Script '" .. scriptName .. "' saved successfully!")
-            sendMessage("To execute the script, use: loadstring <script_name>")
+            sendNotification("Script '" .. scriptName .. "' saved successfully!")
         else
-            sendMessage("Usage: addloadstring <script_name> <script_code>")
+            sendNotification("Usage: addloadstring <script_name> <script_code>")
         end
     end
 
-    -- Handle the "loadstring" command
+    -- Handle the "loadstring" command (executes a saved script or a script from URL)
     if speaker == player.Name and message:lower():sub(1, 10) == "loadstring" then
         local splitMessage = message:split(" ", 2)
-        local scriptName = splitMessage[2]
+        local input = splitMessage[2]
 
-        if scriptName and playerData[player.UserId] and playerData[player.UserId][scriptName] then
-            -- Execute the saved script
-            local scriptCode = playerData[player.UserId][scriptName]
-            local success, result = pcall(function()
-                loadstring(scriptCode)()
-            end)
+        if input then
+            -- Check if the input is a URL
+            if input:match("https?://") then
+                -- Execute script from URL
+                local success, result = pcall(function()
+                    local scriptContent = game:HttpGet(input)
+                    loadstring(scriptContent)()
+                end)
 
-            if success then
-                sendMessage("Script '" .. scriptName .. "' executed successfully.")
+                if success then
+                    sendNotification("Script from URL executed successfully.")
+                else
+                    sendNotification("Error executing the script from URL: " .. result)
+                end
             else
-                sendMessage("Error executing the script: " .. result)
+                -- If it's not a URL, check if it's a saved script
+                if playerData[player.UserId] and playerData[player.UserId][input] then
+                    local scriptCode = playerData[player.UserId][input]
+                    local success, result = pcall(function()
+                        loadstring(scriptCode)()
+                    end)
+
+                    if success then
+                        sendNotification("Script '" .. input .. "' executed successfully.")
+                    else
+                        sendNotification("Error executing the script '" .. input .. "': " .. result)
+                    end
+                else
+                    sendNotification("No script found with the name '" .. input .. "'")
+                end
             end
         else
-            sendMessage("No script found with the name: " .. scriptName)
+            sendNotification("Usage: loadstring <script_name_or_url>")
         end
     end
 end
-
--- Notify the player how to use the script system
-sendMessage("Welcome to the custom script system!")
-sendMessage("Commands:")
-sendMessage("1. addloadstring <script_name> <script_code> - Saves a script.")
-sendMessage("2. loadstring <script_name> - Executes a saved script.")
