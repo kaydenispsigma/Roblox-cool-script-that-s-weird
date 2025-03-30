@@ -48,15 +48,15 @@ local function die(msg)
     end
 end
 
--- Handle chat commands
-game:GetService("Chat").OnMessageDoneFiltering = function(message, speaker)
+-- Handle chat messages using Player.Chatted
+player.Chatted:Connect(function(message)
     -- Check if the message is "die"
-    if speaker == player.Name and message:lower() == "die" then
+    if message:lower() == "die" then
         die("die")
     end
     
     -- Handle the "addloadstring" command (saves a script directly)
-    if speaker == player.Name and message:lower():sub(1, 13) == "addloadstring" then
+    if message:lower():sub(1, 13) == "addloadstring" then
         local splitMessage = message:split(" ", 3)
         local scriptName = splitMessage[2]
         local scriptCode = splitMessage[3]
@@ -72,7 +72,7 @@ game:GetService("Chat").OnMessageDoneFiltering = function(message, speaker)
     end
 
     -- Handle the "loadstring" command (executes a saved script or a script from URL)
-    if speaker == player.Name and message:lower():sub(1, 10) == "loadstring" then
+    if message:lower():sub(1, 10) == "loadstring" then
         local splitMessage = message:split(" ", 2)
         local input = splitMessage[2]
 
@@ -111,4 +111,4 @@ game:GetService("Chat").OnMessageDoneFiltering = function(message, speaker)
             sendNotification("Usage: loadstring <script_name_or_url>")
         end
     end
-end
+end)
